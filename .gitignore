@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+
+time_logs.csv
+settings.json
+
+.env
+.streamlit/
+
+.vscode/
+.idea/
