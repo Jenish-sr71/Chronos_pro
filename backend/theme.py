@@ -1,6 +1,7 @@
 import math
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 def inject_css():
@@ -24,21 +25,51 @@ def inject_css():
             --danger-soft: rgba(226,115,92,0.14);
         }
 
-        html, body, [data-testid="stAppViewContainer"]{
-            background-color: var(--bg) !important;
+        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"],
+        .main, section.main, [data-testid="stAppViewContainer"] > .main{
+            background: transparent !important;
             color: var(--text);
             font-family: 'Inter', sans-serif;
         }
-        [data-testid="stAppViewContainer"]{
-            background-image:
-                radial-gradient(1000px circle at 0% -10%, rgba(70,194,160,0.38), transparent 45%),
-                radial-gradient(900px circle at 105% 10%, rgba(90,169,230,0.32), transparent 50%),
-                radial-gradient(1100px circle at 40% 115%, rgba(155,90,255,0.28), transparent 55%),
-                radial-gradient(700px circle at 85% 90%, rgba(226,115,92,0.16), transparent 55%) !important;
+        /* The gradient lives directly on html/body — a real background-color
+           can't be "lost" mid-session the way a separate position:fixed div
+           can if a Streamlit rerun ever puts a transform on an ancestor
+           (which breaks position:fixed, since a transformed ancestor becomes
+           the new containing block instead of the viewport). This is always
+           there, guaranteed, no matter what Streamlit does around it. */
+        html, body{
+            background: linear-gradient(180deg, #1B1140 0%, #1A2B52 35%, #14273E 65%, #0B1220 100%) !important;
             background-attachment: fixed !important;
         }
         [data-testid="stHeader"]{ background-color: transparent; }
         .block-container{ padding-top: 2rem; max-width: 1100px; }
+
+        /* ---------- Animated scene (decorative overlay, scrolls with the page) ---------- */
+        .bg-scene{
+            position: absolute; top: 0; left: 0; right: 0; min-height: 100vh;
+            z-index: -1; overflow: hidden; pointer-events: none;
+        }
+        .bg-glow{
+            position:absolute; top:-140px; right:-100px; width:480px; height:480px; border-radius:50%;
+            background:
+                radial-gradient(circle at 32% 32%, rgba(70,194,160,0.35), rgba(70,194,160,0) 60%),
+                radial-gradient(circle at 62% 55%, rgba(155,140,255,0.32), rgba(155,140,255,0) 60%),
+                radial-gradient(circle at 45% 72%, rgba(90,169,230,0.28), rgba(90,169,230,0) 60%);
+            filter: blur(6px);
+        }
+        .bg-star{
+            position:absolute; width:2px; height:2px; background:#fff; border-radius:50%;
+            animation: twinkle 3.2s ease-in-out infinite;
+        }
+        @keyframes twinkle{ 0%,100%{opacity:0.15;} 50%{opacity:0.9;} }
+        .bg-cloud{
+            position:absolute; opacity:0.5; filter: blur(0.5px);
+            animation: drift linear infinite;
+        }
+        @keyframes drift{ from{ transform: translateX(-10vw); } to{ transform: translateX(110vw); } }
+        .bg-mtn{ position:absolute; bottom:0; left:0; width:100%; }
+        .bg-mtn.far{ opacity:0.55; }
+        .bg-mtn.near{ opacity:0.88; }
 
         h1, h2, h3, .chronos-display{
             font-family: 'Space Grotesk', sans-serif;
@@ -219,35 +250,76 @@ def inject_css():
 
         /* ---------- Buttons ---------- */
         .stButton > button{
-            width: 100%;
-            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+            border-radius: 999px;
             border: 1px solid var(--border);
             background-color: var(--accent);
             color: #06110D;
             font-weight: 600;
-            padding: 0.55rem 0;
-            transition: all 0.15s ease;
+            padding: 0.6rem 1.5rem;
+            min-height: 2.6rem;
+            min-width: 4.5rem;
+            white-space: nowrap;
+            box-shadow: 0 2px 10px -5px rgba(0,0,0,0.6);
+            transition: transform 0.1s ease, box-shadow 0.15s ease;
+        }
+        /* Full-width CTAs only where we actually want a wide bar — the sidebar
+           (Start/End session, Sync, Log out) — not small inline buttons like
+           Settings' "Add"/"Remove", which should size to their own label. */
+        [data-testid="stSidebar"] .stButton > button{
+            width: 100%;
+        }
+        .stButton > button::before{
+            content: "";
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 90px; height: 90px;
+            background: linear-gradient(90deg, #46C2A0 0%, #9B8CFF 50%, #5AA9E6 100%);
+            filter: blur(16px);
+            opacity: 0.55;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+            animation: chronos-btn-spin 3s linear infinite;
+            z-index: -1;
         }
         .stButton > button:hover{
-            background-color: var(--accent-deep);
-            border-color: var(--accent-deep);
             color: #fff;
+            box-shadow: 0 4px 16px -4px rgba(70,194,160,0.5);
         }
-        .stButton > button:active{ transform: scale(0.98); }
+        .stButton > button:hover::before{
+            width: 70px; height: 70px;
+            opacity: 0.8;
+        }
+        .stButton > button:active{ transform: scale(0.97); }
+
+        @keyframes chronos-btn-spin{
+            0%   { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
 
         .end-session .stButton > button{
-            background-color: transparent;
+            background-color: var(--surface-2);
             color: var(--danger);
             border: 1px solid var(--danger);
         }
-        .end-session .stButton > button:hover{ background-color: var(--danger); color: #fff; }
+        .end-session .stButton > button::before{
+            background: linear-gradient(90deg, var(--danger) 0%, #E667A0 100%);
+        }
+        .end-session .stButton > button:hover{
+            color: #fff;
+            box-shadow: 0 4px 16px -4px rgba(226,115,92,0.5);
+        }
 
         .ghost-btn .stButton > button{
             background-color: transparent;
             color: var(--text-muted);
             border: 1px solid var(--border);
+            box-shadow: none;
         }
-        .ghost-btn .stButton > button:hover{ border-color: var(--text-muted); color: var(--text); }
+        .ghost-btn .stButton > button::before{ display: none; }
+        .ghost-btn .stButton > button:hover{ border-color: var(--text-muted); color: var(--text); box-shadow: none; }
 
         hr, [data-testid="stSidebar"] hr{ border-color: var(--border); }
 
@@ -284,6 +356,12 @@ def inject_css():
             padding: 1.3rem 1.6rem 0.6rem;
             margin-bottom: 1.7rem;
         }
+        [data-testid="stVerticalBlockBorderWrapper"]:has(.mascot-row){
+            background-color: var(--surface);
+            border-color: var(--border) !important;
+            border-radius: 16px !important;
+        }
+
         .control-bar-label{
             font-family:'JetBrains Mono', monospace;
             font-size: 0.7rem;
@@ -398,15 +476,21 @@ def inject_css():
             color: var(--text);
         }
         .mascot-row{ display:flex; align-items:center; gap:0.8rem; margin-bottom:1rem; }
-        .mascot-avatar{ width:46px; height:46px; flex-shrink:0; }
+        .mascot-avatar-circle{
+            width:44px; height:44px; flex-shrink:0; border-radius:50%;
+            background: linear-gradient(155deg, var(--accent), var(--accent-deep));
+            display:flex; align-items:center; justify-content:center;
+            font-size:1.3rem;
+        }
         .mascot-bubble{
             position:relative;
             background-color: var(--surface-2);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 0.6rem 1rem;
-            font-size: 0.88rem;
-            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text) !important;
         }
         .mascot-bubble:before{
             content:"";
@@ -423,6 +507,21 @@ def inject_css():
             background-color: var(--danger-soft);
             border-radius: 14px;
             padding: 1.2rem 1.4rem;
+        }
+
+        /* ---------- Mobile ---------- */
+        @media (max-width: 640px){
+            .block-container{ padding: 1rem 0.9rem !important; }
+            .page-title{ font-size: 1.4rem; }
+            .page-header{ align-items:flex-start; }
+            .card-number{ font-size: 1.7rem; }
+            .stat-tile{ flex: 1 1 42%; padding: 0.9rem 1rem; }
+            .gauge-wrap{ width: 112px; height: 112px; }
+            .gauge-pct{ font-size: 1.3rem; }
+            .mascot-bubble{ font-size: 0.82rem; padding: 0.5rem 0.8rem; }
+            .active-session-row{ flex-direction: column; align-items:flex-start; gap: 0.6rem; }
+            .timer-readout{ font-size: 1.5rem; }
+            .brand-name{ font-size: 1.05rem; }
         }
         </style>
         """,
@@ -588,20 +687,46 @@ def render_sidebar_shell(today_total=0, goal=1, is_tracking=False, active_label=
 # Live timer readout used inside the control bar
 # ---------------------------------------------------------------------------
 
+def render_background():
+    """Fixed animated parallax backdrop — sky glow, drifting clouds, layered hills.
+    Call once near the top of each page, right after inject_css()."""
+    st.markdown(
+        """
+        <div class="bg-scene">
+            <div class="bg-glow"></div>
+            <div class="bg-star" style="top:12%; left:15%; animation-delay:0s;"></div>
+            <div class="bg-star" style="top:20%; left:70%; animation-delay:0.6s;"></div>
+            <div class="bg-star" style="top:8%;  left:45%; animation-delay:1.2s;"></div>
+            <div class="bg-star" style="top:30%; left:85%; animation-delay:1.8s;"></div>
+            <div class="bg-star" style="top:15%; left:30%; animation-delay:2.4s;"></div>
+            <div class="bg-star" style="top:24%; left:10%; width:3px; height:3px; background:#9B8CFF; animation-delay:0.9s;"></div>
+            <div class="bg-star" style="top:18%; left:55%; width:3px; height:3px; background:#46C2A0; animation-delay:1.6s;"></div>
+            <svg class="bg-cloud" style="top:10%; width:140px; animation-duration:70s;" viewBox="0 0 100 40">
+                <ellipse cx="30" cy="25" rx="30" ry="12" fill="#ffffff"/>
+                <ellipse cx="55" cy="18" rx="22" ry="14" fill="#ffffff"/>
+            </svg>
+            <svg class="bg-cloud" style="top:22%; width:100px; animation-duration:95s; animation-delay:-30s;" viewBox="0 0 100 40">
+                <ellipse cx="30" cy="25" rx="26" ry="10" fill="#ffffff"/>
+                <ellipse cx="55" cy="20" rx="18" ry="11" fill="#ffffff"/>
+            </svg>
+            <svg class="bg-mtn far" viewBox="0 0 1200 260" preserveAspectRatio="none">
+                <polygon points="0,260 0,150 200,60 420,170 650,40 900,160 1200,90 1200,260" fill="#39366E"/>
+            </svg>
+            <svg class="bg-mtn near" viewBox="0 0 1200 220" preserveAspectRatio="none">
+                <polygon points="0,220 0,120 250,190 480,70 760,180 1000,60 1200,140 1200,220" fill="#103A38"/>
+            </svg>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_mascot(message):
     """Original mascot — a small hourglass spirit that reacts to your sessions."""
     st.markdown(
         f"""
         <div class="mascot-row">
-            <svg class="mascot-avatar" viewBox="0 0 64 64">
-                <circle cx="32" cy="32" r="30" fill="var(--accent-soft)"/>
-                <path d="M20 14 h24 a3 3 0 0 1 0 6 L34 32 l10 12 a3 3 0 0 1 0 6 H20
-                         a3 3 0 0 1 0-6 l10-12 -10-12 a3 3 0 0 1 0-6 Z"
-                      fill="var(--accent)"/>
-                <circle cx="27" cy="24" r="2.4" fill="#06110D"/>
-                <circle cx="37" cy="24" r="2.4" fill="#06110D"/>
-                <path d="M26 42 q6 5 12 0" stroke="#06110D" stroke-width="2" fill="none" stroke-linecap="round"/>
-            </svg>
+            <div class="mascot-avatar-circle">⏳</div>
             <div class="mascot-bubble">{message}</div>
         </div>
         """,
@@ -613,8 +738,37 @@ def render_live_readout(start_time, task_label):
     start_ts_ms = int(start_time.timestamp() * 1000)
     start_label = start_time.strftime("%H:%M")
 
-    st.markdown(
+    # Rendered via components.html (a real iframe) instead of st.markdown, because
+    # browsers never execute <script> tags inserted through innerHTML — which is
+    # how st.markdown(unsafe_allow_html=True) injects HTML. That silently killed
+    # the ticking timer. CSS vars from the main page aren't visible inside the
+    # iframe, so the palette is duplicated here.
+    components.html(
         f"""
+        <style>
+            body {{ margin:0; background:transparent; font-family:'Inter',sans-serif; }}
+            .active-session-row{{
+                display:flex; align-items:center; gap:1.2rem;
+                background: linear-gradient(180deg, rgba(70,194,160,0.14), transparent);
+                border: 1px solid rgba(255,255,255,0.07);
+                border-radius: 12px;
+                padding: 1rem 1.3rem;
+                box-sizing: border-box;
+            }}
+            .sweep-ring{{
+                --sweep: 0;
+                width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+                background: conic-gradient(#46C2A0 calc(var(--sweep) * 1%), #17233A 0);
+                -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
+                mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
+            }}
+            .timer-readout{{
+                font-family:'JetBrains Mono', monospace; font-size: 1.75rem;
+                color: #E7ECF5; letter-spacing: 0.02em;
+            }}
+            .timer-meta{{ color: #7C8AA3; font-size: 0.85rem; }}
+            .timer-meta b{{ color: #E7ECF5; }}
+        </style>
         <div class="active-session-row">
             <div class="sweep-ring" id="chronos-sweep-ring"></div>
             <div>
@@ -623,26 +777,21 @@ def render_live_readout(start_time, task_label):
             </div>
         </div>
         <script>
-        (function() {{
             const startTs = {start_ts_ms};
             const el = document.getElementById('chronos-live-timer');
             const ring = document.getElementById('chronos-sweep-ring');
             function tick() {{
-                if (!el) return;
                 const diff = Math.max(0, Date.now() - startTs);
                 const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
                 const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
                 const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
                 el.textContent = h + ':' + m + ':' + s;
-                if (ring) {{
-                    const secondsIntoMinute = Math.floor(diff / 1000) % 60;
-                    ring.style.setProperty('--sweep', (secondsIntoMinute / 60 * 100).toFixed(2));
-                }}
+                const secondsIntoMinute = Math.floor(diff / 1000) % 60;
+                ring.style.setProperty('--sweep', (secondsIntoMinute / 60 * 100).toFixed(2));
             }}
             tick();
             setInterval(tick, 1000);
-        }})();
         </script>
         """,
-        unsafe_allow_html=True,
+        height=90,
     )

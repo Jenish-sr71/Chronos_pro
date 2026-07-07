@@ -1,12 +1,12 @@
-venv/
+# Real secrets — never commit this. Copy secrets.toml.example instead.
+.streamlit/secrets.toml
+
+# Local per-user data (accounts, logs, settings) shouldn't ship in the repo.
+data/
+time_logs.csv
+active_session.json
+
+# Python
 __pycache__/
 *.pyc
-
-time_logs.csv
-settings.json
-
-.env
-.streamlit/
-
-.vscode/
-.idea/
+venv/

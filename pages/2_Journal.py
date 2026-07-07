@@ -2,20 +2,24 @@ from datetime import date
 
 import streamlit as st
 
+from backend import auth
 from backend import config as cfg
 from backend import controls, journal, storage, theme
 
 st.set_page_config(page_title="Chronos · Journal", page_icon="⏳", layout="wide")
 theme.inject_css()
+auth.require_login()
+theme.render_background()
 
 goal = controls.render_sidebar_snapshot()
-settings = cfg.load_settings()
+user = auth.current_user()
+settings = cfg.load_settings(user)
 
 theme.page_header("Journal", "Look back on any day and export a written summary.")
 
 selected_date = st.date_input("Pick a date", value=date.today(), max_value=date.today())
 
-day_df = storage.load_for_date(selected_date)
+day_df = storage.load_for_date(selected_date, user)
 
 if day_df is None:
     theme.empty_state(

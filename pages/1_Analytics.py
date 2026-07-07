@@ -1,17 +1,19 @@
 import plotly.express as px
 import streamlit as st
 
-from backend import controls, journal, storage, theme
+from backend import auth, controls, journal, storage, theme
 from backend.constants import PALETTE
 
 st.set_page_config(page_title="Chronos · Analytics", page_icon="⏳", layout="wide")
 theme.inject_css()
+auth.require_login()
+theme.render_background()
 
 controls.render_sidebar_snapshot()
 
 theme.page_header("Analytics", "Trends and patterns across your logged time.")
 
-all_df = storage.load_all()
+all_df = storage.load_all(auth.current_user())
 
 if all_df is None:
     theme.empty_state(

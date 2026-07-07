@@ -3,16 +3,20 @@ from datetime import date
 import plotly.express as px
 import streamlit as st
 
+from backend import auth
 from backend import config as cfg
 from backend import controls, journal, storage, theme
 from backend.constants import PALETTE
 
 st.set_page_config(page_title="Chronos", page_icon="⏳", layout="wide")
 theme.inject_css()
+auth.require_login()
+theme.render_background()
 
 goal = controls.render_sidebar_snapshot()
+user = auth.current_user()
 
-all_df = storage.load_all()
+all_df = storage.load_all(user)
 streak = journal.current_streak(all_df)
 chip = f"🔥 {streak} day streak" if streak > 0 else None
 
@@ -25,7 +29,7 @@ theme.page_header(
 
 controls.render_control_bar()
 
-today_df = storage.load_for_date(date.today())
+today_df = storage.load_for_date(date.today(), user)
 
 if today_df is None:
     theme.empty_state(
